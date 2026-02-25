@@ -149,7 +149,7 @@ export function buildJiraFields(
     }
 
     return {
-      project: { key: "JUR" },
+      project: { key: trigger.config.jiraProject },
       issuetype: { id: trigger.config.jiraIssueTypeId },
       summary,
       description: buildBugDescription(data),
@@ -166,7 +166,7 @@ export function buildJiraFields(
   const uniqueLabels = [...new Set(labels)];
 
   const fields: JiraIssueFields = {
-    project: { key: "JUR" },
+    project: { key: trigger.config.jiraProject },
     issuetype: { id: trigger.config.jiraIssueTypeId },
     summary,
     description: buildImprovementDescription(data, modules.map((m) => m.name)),

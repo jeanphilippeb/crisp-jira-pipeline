@@ -1,4 +1,5 @@
 export interface TriggerSegment {
+  jiraProject: string;
   jiraIssueType: "Bug" | "Improvement";
   jiraIssueTypeId: string;
   jiraPriority: string;
@@ -12,18 +13,21 @@ export interface ModuleSegment {
 
 export const TRIGGER_SEGMENTS: Record<string, TriggerSegment> = {
   bug: {
+    jiraProject: "JB",
     jiraIssueType: "Bug",
     jiraIssueTypeId: "11085",
     jiraPriority: "normal",
     jiraPriorityId: "10000",
   },
   "urgent-bug": {
+    jiraProject: "JENG",
     jiraIssueType: "Bug",
     jiraIssueTypeId: "11085",
     jiraPriority: "urgent",
     jiraPriorityId: "10001",
   },
   "feature-request": {
+    jiraProject: "JUR",
     jiraIssueType: "Improvement",
     jiraIssueTypeId: "10867",
     jiraPriority: "Medium",
