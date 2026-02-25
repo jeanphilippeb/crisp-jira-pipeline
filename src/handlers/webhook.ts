@@ -19,6 +19,7 @@ interface CrispWebhookPayload {
 /** Core webhook handler — orchestrates the full pipeline */
 export async function handleCrispWebhook(c: Context): Promise<Response> {
   const body = (await c.req.json()) as CrispWebhookPayload;
+  console.log("[webhook] Received:", JSON.stringify(body, null, 2));
 
   // Validate event type
   if (body.event !== "session:set_segments") {
