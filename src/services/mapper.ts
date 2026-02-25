@@ -169,6 +169,12 @@ export function buildJiraFields(
   // Dedupe
   const uniqueLabels = [...new Set(labels)];
 
+  // Module is REQUIRED — use resolved modules or fallback to "Operations" (11671)
+  const moduleValues =
+    modules.length > 0
+      ? modules.map((m) => ({ id: m.id }))
+      : [{ id: "11671" }]; // Operations as placeholder
+
   const fields: JiraIssueFields = {
     project: { key: trigger.config.jiraProject },
     issuetype: { id: trigger.config.jiraIssueTypeId },
@@ -176,16 +182,17 @@ export function buildJiraFields(
     description: buildImprovementDescription(data, modules.map((m) => m.name)),
     labels: uniqueLabels,
     customfield_10072: [company],
+    // Module — required field (multicheckboxes)
+    customfield_11521: moduleValues,
+    // Tech category — required field, default to "Ui/UxImprovement" (12005), PM updates during grooming
+    customfield_11901: [{ id: "12005" }],
+    // Product design owner — explicit null to bypass broken default (2 users with isMulti=false)
+    customfield_11404: null,
   };
   // Only include priority if the project supports it
   if (trigger.config.jiraPriorityId) {
     fields.priority = { id: trigger.config.jiraPriorityId };
   }
-
-  if (modules.length > 0) {
-    fields.customfield_11521 = modules.map((m) => ({ id: m.id }));
-  }
-  // Tech category left empty (BR-004) — PM fills during grooming
 
   return fields;
 }

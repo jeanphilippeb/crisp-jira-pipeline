@@ -14,9 +14,11 @@ export interface JiraIssueFields {
   labels?: string[];
   priority?: { id: string };
   // Custom fields
-  customfield_10072?: string[]; // Company name
-  customfield_11521?: { id: string }[]; // Module
-  customfield_11901?: { id: string }[]; // Tech category
+  customfield_10072?: string[]; // Company name (labels)
+  customfield_11521?: { id: string }[]; // Module (multicheckboxes)
+  customfield_11901?: { id: string }[]; // Tech category (multicheckboxes)
+  customfield_11404?: null; // Product design owner — explicit null to bypass broken default
+  [key: string]: unknown; // Allow additional custom fields
 }
 
 export interface JiraCreateResponse {
