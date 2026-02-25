@@ -55,13 +55,19 @@ export const MODULE_SEGMENTS: Record<string, ModuleSegment> = {
   "mod:booking": { id: "12041", name: "Booking" },
 };
 
+/** Normalize a segment name: lowercase, trim, underscores → hyphens */
+function normalizeSegment(s: string): string {
+  return s.trim().toLowerCase().replace(/_/g, "-");
+}
+
 /** Resolve trigger from segments. Bug takes priority over feature-request (BR-003). */
 export function resolveTrigger(
   segments: string[]
 ): { segment: string; config: TriggerSegment } | null {
+  const normalized = segments.map(normalizeSegment);
   // Priority: urgent-bug > bug > feature-request
   for (const key of ["urgent-bug", "bug", "feature-request"]) {
-    if (segments.includes(key)) {
+    if (normalized.includes(key)) {
       return { segment: key, config: TRIGGER_SEGMENTS[key] };
     }
   }

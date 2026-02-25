@@ -17,8 +17,8 @@ app.use("*", async (c, next) => {
 // Health check
 app.get("/health", (c) => c.json({ status: "ok" }));
 
-// Crisp webhook
-app.post("/webhooks/crisp", async (c) => {
+// Crisp webhook handler (shared)
+const webhookHandler = async (c: import("hono").Context) => {
   try {
     return await handleCrispWebhook(c);
   } catch (err) {
@@ -28,7 +28,13 @@ app.post("/webhooks/crisp", async (c) => {
       500
     );
   }
-});
+};
+
+// Crisp webhook — primary route
+app.post("/webhooks/crisp", webhookHandler);
+
+// Crisp webhook — alias (Crisp may send to "/" depending on plugin config)
+app.post("/", webhookHandler);
 
 // Catch-all — log any unexpected routes
 app.all("*", (c) => {
