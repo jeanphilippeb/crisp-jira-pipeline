@@ -148,14 +148,18 @@ export function buildJiraFields(
       if (cl) labels.push(cl);
     }
 
-    return {
+    const bugFields: JiraIssueFields = {
       project: { key: trigger.config.jiraProject },
       issuetype: { id: trigger.config.jiraIssueTypeId },
       summary,
       description: buildBugDescription(data),
       labels,
-      priority: { id: trigger.config.jiraPriorityId },
     };
+    // Only include priority if the project supports it
+    if (trigger.config.jiraPriorityId) {
+      bugFields.priority = { id: trigger.config.jiraPriorityId };
+    }
+    return bugFields;
   }
 
   // Improvement ticket
@@ -171,9 +175,12 @@ export function buildJiraFields(
     summary,
     description: buildImprovementDescription(data, modules.map((m) => m.name)),
     labels: uniqueLabels,
-    priority: { id: trigger.config.jiraPriorityId },
     customfield_10072: [company],
   };
+  // Only include priority if the project supports it
+  if (trigger.config.jiraPriorityId) {
+    fields.priority = { id: trigger.config.jiraPriorityId };
+  }
 
   if (modules.length > 0) {
     fields.customfield_11521 = modules.map((m) => ({ id: m.id }));

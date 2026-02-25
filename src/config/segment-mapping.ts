@@ -3,7 +3,7 @@ export interface TriggerSegment {
   jiraIssueType: "Bug" | "Improvement";
   jiraIssueTypeId: string;
   jiraPriority: string;
-  jiraPriorityId: string;
+  jiraPriorityId?: string; // Optional — some projects (JB) don't support priority field
 }
 
 export interface ModuleSegment {
@@ -17,7 +17,7 @@ export const TRIGGER_SEGMENTS: Record<string, TriggerSegment> = {
     jiraIssueType: "Bug",
     jiraIssueTypeId: "10869", // JB has no Bug type — using Task (10869)
     jiraPriority: "normal",
-    jiraPriorityId: "10000",
+    // JB Task type does NOT support priority field — omit it
   },
   "urgent-bug": {
     jiraProject: "JENG",

@@ -25,10 +25,14 @@ export interface JiraCreateResponse {
   self: string;
 }
 
-/** Create a Jira issue in the JUR project */
+/** Create a Jira issue */
 export async function createIssue(
   fields: JiraIssueFields
 ): Promise<JiraCreateResponse> {
+  const payload = { fields };
+  console.log("[jira] Creating issue in project", fields.project.key, "with type", fields.issuetype.id);
+  console.log("[jira] Full payload:", JSON.stringify(payload, null, 2));
+
   const response = await fetch(`${JIRA_API_BASE}/issue`, {
     method: "POST",
     headers: {
@@ -36,13 +40,18 @@ export async function createIssue(
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
     const text = await response.text();
+    console.error("[jira] API error", response.status, "for project", fields.project.key);
+    console.error("[jira] Error response:", text);
+    console.error("[jira] Payload was:", JSON.stringify(payload, null, 2));
     throw new Error(`Jira API error ${response.status}: ${text}`);
   }
 
-  return (await response.json()) as JiraCreateResponse;
+  const result = (await response.json()) as JiraCreateResponse;
+  console.log("[jira] Issue created:", result.key);
+  return result;
 }
