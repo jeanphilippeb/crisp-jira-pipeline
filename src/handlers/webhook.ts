@@ -81,11 +81,15 @@ export async function handleCrispWebhook(c: Context): Promise<Response> {
 
   console.log(`[webhook] Trigger: ${trigger.segment} for session ${sessionId}`);
 
-  // Duplicate check (BR-001)
-  const existingKey = await hasExistingTicket(sessionId);
-  if (existingKey) {
-    console.log(`[webhook] Duplicate — ticket ${existingKey} already exists`);
-    return c.json({ skipped: true, reason: "duplicate", existingTicket: existingKey }, 200);
+  // Duplicate check (BR-001) — non-fatal if Crisp API fails
+  try {
+    const existingKey = await hasExistingTicket(sessionId);
+    if (existingKey) {
+      console.log(`[webhook] Duplicate — ticket ${existingKey} already exists`);
+      return c.json({ skipped: true, reason: "duplicate", existingTicket: existingKey }, 200);
+    }
+  } catch (err) {
+    console.warn("[webhook] Could not check for duplicate (Crisp API error), proceeding:", err);
   }
 
   // Enrich conversation data
@@ -109,23 +113,39 @@ export async function handleCrispWebhook(c: Context): Promise<Response> {
   const ticketUrl = `${env.jiraBaseUrl}/browse/${issue.key}`;
   console.log(`[webhook] Created ${issue.key} → ${ticketUrl}`);
 
-  // Store ticket link in Crisp (BR-001)
-  await storeTicketLink(sessionId, issue.key, ticketUrl);
+  // Post-creation: store link + note in Crisp (non-fatal if Crisp API fails)
+  let crispLinkOk = false;
+  let crispNoteOk = false;
 
-  // Post internal note in Crisp conversation
-  const noteContent = [
-    `🎫 Jira ticket created: **${issue.key}**`,
-    `Type: ${trigger.config.jiraIssueType}`,
-    `Link: ${ticketUrl}`,
-    "",
-    "_Auto-created by Crisp→Jira pipeline_",
-  ].join("\n");
+  try {
+    await storeTicketLink(sessionId, issue.key, ticketUrl);
+    crispLinkOk = true;
+    console.log("[webhook] Stored ticket link in Crisp metadata");
+  } catch (err) {
+    console.error("[webhook] Failed to store ticket link in Crisp (non-fatal):", err);
+  }
 
-  await postNote(sessionId, noteContent);
+  try {
+    const noteContent = [
+      `🎫 Jira ticket created: **${issue.key}**`,
+      `Type: ${trigger.config.jiraIssueType}`,
+      `Link: ${ticketUrl}`,
+      "",
+      "_Auto-created by Crisp→Jira pipeline_",
+    ].join("\n");
+
+    await postNote(sessionId, noteContent);
+    crispNoteOk = true;
+    console.log("[webhook] Posted internal note in Crisp");
+  } catch (err) {
+    console.error("[webhook] Failed to post note in Crisp (non-fatal):", err);
+  }
 
   return c.json({
     success: true,
     ticket: { key: issue.key, url: ticketUrl },
     trigger: trigger.segment,
+    crispLinkOk,
+    crispNoteOk,
   });
 }
