@@ -15,14 +15,14 @@ export const TRIGGER_SEGMENTS: Record<string, TriggerSegment> = {
   bug: {
     jiraProject: "JB",
     jiraIssueType: "Bug",
-    jiraIssueTypeId: "11085",
+    jiraIssueTypeId: "10869", // JB has no Bug type — using Task (10869)
     jiraPriority: "normal",
     jiraPriorityId: "10000",
   },
   "urgent-bug": {
     jiraProject: "JENG",
     jiraIssueType: "Bug",
-    jiraIssueTypeId: "11085",
+    jiraIssueTypeId: "10004", // JENG Bug type
     jiraPriority: "urgent",
     jiraPriorityId: "10001",
   },
