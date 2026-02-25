@@ -75,7 +75,17 @@ export async function enrichConversation(
     summary = "Issue reported via Crisp";
   }
 
-  const segments = meta.segments || conversation.meta?.segments || [];
+  // Try multiple sources for segments
+  const convAny = conversation as any;
+  const segments: string[] =
+    meta.segments ||
+    conversation.meta?.segments ||
+    convAny.segments ||
+    [];
+  console.log("[enrichment] meta.segments:", meta.segments);
+  console.log("[enrichment] conversation.meta?.segments:", conversation.meta?.segments);
+  console.log("[enrichment] conversation.segments:", convAny.segments);
+  console.log("[enrichment] Final segments:", segments);
 
   // Device info from Crisp meta
   const device = meta.device;

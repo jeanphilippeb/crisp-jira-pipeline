@@ -7,34 +7,76 @@ import { createIssue } from "../clients/jira.js";
 import { postNote } from "../clients/crisp.js";
 import { env } from "../config/env.js";
 
-interface CrispWebhookPayload {
-  event: string;
-  data: {
-    session_id: string;
-    website_id: string;
-    segments?: string[];
-  };
-}
-
 /** Core webhook handler — orchestrates the full pipeline */
 export async function handleCrispWebhook(c: Context): Promise<Response> {
-  const body = (await c.req.json()) as CrispWebhookPayload;
-  console.log("[webhook] Received:", JSON.stringify(body, null, 2));
+  // Log raw body for debugging payload format
+  const rawBody = await c.req.text();
+  console.log("[webhook] ===== RAW BODY START =====");
+  console.log(rawBody);
+  console.log("[webhook] ===== RAW BODY END =====");
 
-  // Validate event type
-  if (body.event !== "session:set_segments") {
-    return c.json({ skipped: true, reason: "irrelevant event" }, 200);
+  let body: Record<string, unknown>;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    console.error("[webhook] Failed to parse JSON body");
+    return c.json({ error: "invalid JSON" }, 400);
   }
 
-  const { session_id: sessionId, website_id: websiteId, segments } = body.data;
-  if (!sessionId || !websiteId) {
-    return c.json({ error: "missing session_id or website_id" }, 400);
+  console.log("[webhook] Parsed event:", body.event);
+  console.log("[webhook] Top-level keys:", Object.keys(body));
+
+  // Accept both "session:set_segments" and other segment-related events
+  const event = body.event as string;
+  if (!event?.includes("segment")) {
+    console.log(`[webhook] Skipping non-segment event: ${event}`);
+    return c.json({ skipped: true, reason: "irrelevant event", event }, 200);
+  }
+
+  // Flexible payload extraction — Crisp may nest data differently
+  const data = (body.data || body) as Record<string, unknown>;
+  console.log("[webhook] data keys:", Object.keys(data));
+
+  const sessionId = (data.session_id || data.sessionId) as string | undefined;
+  const websiteId = (data.website_id || data.websiteId || env.crispWebsiteId) as string;
+
+  if (!sessionId) {
+    console.error("[webhook] No session_id found in payload. data =", JSON.stringify(data));
+    return c.json({ error: "missing session_id" }, 400);
+  }
+
+  console.log(`[webhook] sessionId=${sessionId}, websiteId=${websiteId}`);
+
+  // Extract segments from webhook payload (multiple possible locations)
+  let webhookSegments: string[] = [];
+  if (Array.isArray(data.segments)) {
+    webhookSegments = data.segments as string[];
+  } else if (Array.isArray((data as any).updated_segments)) {
+    webhookSegments = (data as any).updated_segments as string[];
+  } else if (Array.isArray((data as any).segment)) {
+    webhookSegments = [(data as any).segment as string];
+  }
+
+  console.log("[webhook] Segments from webhook payload:", webhookSegments);
+
+  // If no segments in webhook payload, fetch them from Crisp API
+  if (webhookSegments.length === 0) {
+    console.log("[webhook] No segments in webhook, fetching from Crisp API...");
+    try {
+      const { crispRestCall } = await import("../clients/crisp.js");
+      const meta = (await crispRestCall(`/conversation/${sessionId}/meta`)) as any;
+      webhookSegments = meta?.segments || [];
+      console.log("[webhook] Segments from API:", webhookSegments);
+    } catch (err) {
+      console.error("[webhook] Failed to fetch segments from API:", err);
+    }
   }
 
   // Resolve trigger segment (BR-003: bug priority over feature-request)
-  const trigger = resolveTrigger(segments || []);
+  const trigger = resolveTrigger(webhookSegments);
   if (!trigger) {
-    return c.json({ skipped: true, reason: "no trigger segment" }, 200);
+    console.log("[webhook] No trigger segment found in:", webhookSegments);
+    return c.json({ skipped: true, reason: "no trigger segment", segments: webhookSegments }, 200);
   }
 
   console.log(`[webhook] Trigger: ${trigger.segment} for session ${sessionId}`);
@@ -47,16 +89,20 @@ export async function handleCrispWebhook(c: Context): Promise<Response> {
   }
 
   // Enrich conversation data
-  const data = await enrichConversation(sessionId, websiteId);
+  const enriched = await enrichConversation(sessionId, websiteId);
 
-  // Re-verify trigger segment is still present (BR-002)
-  if (!data.segments.includes(trigger.segment)) {
-    console.log(`[webhook] Segment "${trigger.segment}" removed before processing`);
+  console.log("[webhook] Enriched segments:", enriched.segments);
+  console.log("[webhook] Webhook segments:", webhookSegments);
+
+  // BR-002: Use EITHER enriched segments OR webhook segments
+  const allSegments = [...new Set([...enriched.segments, ...webhookSegments])];
+  if (!allSegments.includes(trigger.segment)) {
+    console.log(`[webhook] Segment "${trigger.segment}" not found in combined segments:`, allSegments);
     return c.json({ skipped: true, reason: "segment removed" }, 200);
   }
 
   // Build Jira fields
-  const fields = buildJiraFields(data, trigger);
+  const fields = buildJiraFields(enriched, trigger);
 
   // Create Jira issue
   const issue = await createIssue(fields);

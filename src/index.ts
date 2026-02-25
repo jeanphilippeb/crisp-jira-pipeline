@@ -5,6 +5,15 @@ import { handleCrispWebhook } from "./handlers/webhook.js";
 
 const app = new Hono();
 
+// Global logging middleware — logs ALL incoming requests
+app.use("*", async (c, next) => {
+  const start = Date.now();
+  console.log(`[request] ${c.req.method} ${c.req.path} from ${c.req.header("x-forwarded-for") || "unknown"}`);
+  console.log(`[request] Headers: ${JSON.stringify(Object.fromEntries(c.req.raw.headers))}`);
+  await next();
+  console.log(`[request] ${c.req.method} ${c.req.path} → ${c.res.status} (${Date.now() - start}ms)`);
+});
+
 // Health check
 app.get("/health", (c) => c.json({ status: "ok" }));
 
@@ -19,6 +28,12 @@ app.post("/webhooks/crisp", async (c) => {
       500
     );
   }
+});
+
+// Catch-all — log any unexpected routes
+app.all("*", (c) => {
+  console.log(`[404] Unmatched route: ${c.req.method} ${c.req.path}`);
+  return c.json({ error: "not found", path: c.req.path }, 404);
 });
 
 const port = env.port;
