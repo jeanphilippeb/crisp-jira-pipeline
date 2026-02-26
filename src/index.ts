@@ -14,8 +14,9 @@ app.use("*", async (c, next) => {
   console.log(`[request] ${c.req.method} ${c.req.path} → ${c.res.status} (${Date.now() - start}ms)`);
 });
 
-// Health check
-app.get("/health", (c) => c.json({ status: "ok" }));
+// Health check — version helps verify deployment
+const BUILD_VERSION = "v3-required-fields";
+app.get("/health", (c) => c.json({ status: "ok", version: BUILD_VERSION }));
 
 // Crisp webhook handler (shared)
 const webhookHandler = async (c: import("hono").Context) => {
