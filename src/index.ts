@@ -15,7 +15,7 @@ app.use("*", async (c, next) => {
 });
 
 // Health check — version helps verify deployment
-const BUILD_VERSION = "v4-field-formats";
+const BUILD_VERSION = "v5-dedup-lock";
 app.get("/health", (c) => c.json({ status: "ok", version: BUILD_VERSION }));
 
 // Crisp webhook handler (shared)

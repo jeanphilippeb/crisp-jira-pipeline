@@ -7,6 +7,28 @@ import { createIssue } from "../clients/jira.js";
 import { postNote } from "../clients/crisp.js";
 import { env } from "../config/env.js";
 
+/**
+ * In-memory lock to prevent duplicate ticket creation from rapid webhook retries.
+ * Key = sessionId, value = timestamp when processing started.
+ * Entries are cleaned up after 5 minutes.
+ */
+const processingLock = new Map<string, number>();
+const LOCK_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function acquireLock(sessionId: string): boolean {
+  const now = Date.now();
+  const existing = processingLock.get(sessionId);
+  if (existing && now - existing < LOCK_TTL_MS) {
+    return false; // Already being processed
+  }
+  processingLock.set(sessionId, now);
+  // Cleanup old entries
+  for (const [key, ts] of processingLock) {
+    if (now - ts > LOCK_TTL_MS) processingLock.delete(key);
+  }
+  return true;
+}
+
 /** Core webhook handler — orchestrates the full pipeline */
 export async function handleCrispWebhook(c: Context): Promise<Response> {
   // Log raw body for debugging payload format
@@ -46,6 +68,12 @@ export async function handleCrispWebhook(c: Context): Promise<Response> {
   }
 
   console.log(`[webhook] sessionId=${sessionId}, websiteId=${websiteId}`);
+
+  // In-memory lock — prevent concurrent processing of the same session
+  if (!acquireLock(sessionId)) {
+    console.log(`[webhook] Session ${sessionId} already being processed (in-memory lock)`);
+    return c.json({ skipped: true, reason: "already processing" }, 200);
+  }
 
   // Extract segments from webhook payload (multiple possible locations)
   let webhookSegments: string[] = [];
