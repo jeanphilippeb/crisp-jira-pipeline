@@ -17,7 +17,7 @@ export interface JiraIssueFields {
   customfield_10072?: string[]; // Company name (labels)
   customfield_11521?: { id: string }[]; // Module (multicheckboxes)
   customfield_11901?: { id: string }[]; // Tech category (multicheckboxes)
-  customfield_11404?: null; // Product design owner — explicit null to bypass broken default
+  customfield_11404?: { accountId: string }[]; // Product design owner (user picker, array format)
   [key: string]: unknown; // Allow additional custom fields
 }
 

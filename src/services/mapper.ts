@@ -181,13 +181,13 @@ export function buildJiraFields(
     summary,
     description: buildImprovementDescription(data, modules.map((m) => m.name)),
     labels: uniqueLabels,
-    customfield_10072: [company],
+    customfield_10072: [companyLabel(company) || "unknown"],
     // Module — required field (multicheckboxes)
     customfield_11521: moduleValues,
     // Tech category — required field, default to "Ui/UxImprovement" (12005), PM updates during grooming
     customfield_11901: [{ id: "12005" }],
-    // Product design owner — explicit null to bypass broken default (2 users with isMulti=false)
-    customfield_11404: null,
+    // Product design owner — must be array with single user (field is isMulti=false but expects array)
+    customfield_11404: [{ accountId: "712020:0813430a-47b4-48e5-b86a-87f9c3fe3f38" }],
   };
   // Only include priority if the project supports it
   if (trigger.config.jiraPriorityId) {
