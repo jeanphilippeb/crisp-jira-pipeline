@@ -191,15 +191,42 @@ export function buildJiraFields(
     const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
-    const company = data.companyName || "Unknown";
-    const contextSnippet = data.conversation.subject
-      || (data.transcript ? data.transcript.slice(0, 300) : "See Crisp conversation");
+    // Company: custom data → email domain fallback
+    const emailDomain = data.customerEmail
+      ? data.customerEmail.split("@")[1] || ""
+      : "";
+    const company = data.companyName || emailDomain || "Unknown";
+
+    const subject = data.conversation.subject || "(no subject)";
+    const transcript = data.transcript || "(no messages)";
+    const jamSection = data.jamLinks.length > 0
+      ? `\nRecordings:\n${data.jamLinks.join("\n")}`
+      : "";
+
+    // JTCS is team-managed (simplified): description must be plain text, not ADF
+    const plainDescription = [
+      `CS Config / Doc Change Request — via Crisp`,
+      ``,
+      `Reporter: ${data.customerName} (${data.customerEmail})`,
+      `Company: ${company}`,
+      `Crisp conversation: ${data.conversationUrl}`,
+      `Date: ${new Date().toISOString().slice(0, 10)}`,
+      ``,
+      `Subject: ${subject}`,
+      ``,
+      `Conversation:`,
+      transcript,
+      jamSection,
+      ``,
+      `Segments: ${data.segments.join(", ")}`,
+      `⚠️ To be detailed during grooming.`,
+    ].join("\n");
 
     return {
       project: { key: trigger.config.jiraProject },
       issuetype: { id: trigger.config.jiraIssueTypeId },
       summary: `[Crisp] CS Config — ${company}`,
-      description: buildCsConfigDescription(data),
+      description: plainDescription,
       labels: ["crisp", companyLabel(company)].filter(Boolean),
       duedate: dueDate,
       // Required custom fields — to be refined during grooming
@@ -208,7 +235,7 @@ export function buildJiraFields(
       // These textarea fields require ADF despite schema showing "type: string"
       customfield_12157: adf.doc(
         adf.paragraph(adf.text(`Company: ${company}`)),
-        adf.paragraph(adf.text(`Context: ${contextSnippet}`)),
+        adf.paragraph(adf.text(`Subject: ${subject}`)),
         adf.paragraph(adf.text("⚠️ To be detailed during grooming.", [{ type: "em" } as ReturnType<typeof adf.bold>]))
       ),
       customfield_12357: adf.doc(
