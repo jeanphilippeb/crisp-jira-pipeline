@@ -21,8 +21,8 @@ export interface JiraIssueFields {
   // JTCS required fields
   customfield_11972?: { id: string }; // Module (select) — JTCS
   customfield_12155?: { id: string }; // Ticket type (select) — JTCS
-  customfield_12157?: string;         // Which existing config — JTCS
-  customfield_12357?: string;         // Acceptance Criteria — JTCS
+  customfield_12157?: unknown;        // Which existing config — JTCS (ADF)
+  customfield_12357?: unknown;        // Acceptance Criteria — JTCS (ADF)
   duedate?: string;                   // Due date (YYYY-MM-DD) — JTCS
   [key: string]: unknown; // Allow additional custom fields
 }

@@ -205,8 +205,15 @@ export function buildJiraFields(
       // Required custom fields — to be refined during grooming
       customfield_11972: { id: "12082" }, // Module = "Config"
       customfield_12155: { id: "12201" }, // Ticket type = "Others"
-      customfield_12157: `Customer request via Crisp. Company: ${company}.\n\nContext: ${contextSnippet}\n\n⚠️ To be detailed during grooming.`,
-      customfield_12357: "To be defined during grooming.",
+      // These textarea fields require ADF despite schema showing "type: string"
+      customfield_12157: adf.doc(
+        adf.paragraph(adf.text(`Company: ${company}`)),
+        adf.paragraph(adf.text(`Context: ${contextSnippet}`)),
+        adf.paragraph(adf.text("⚠️ To be detailed during grooming.", [{ type: "em" } as ReturnType<typeof adf.bold>]))
+      ),
+      customfield_12357: adf.doc(
+        adf.paragraph(adf.text("To be defined during grooming."))
+      ),
     };
   }
 
