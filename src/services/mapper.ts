@@ -198,7 +198,7 @@ export function buildJiraFields(
     return {
       project: { key: trigger.config.jiraProject },
       issuetype: { id: trigger.config.jiraIssueTypeId },
-      summary: `[Crisp] CS Config: ${data.summary}`,
+      summary: `[Crisp] CS Config — ${company}`,
       description: buildCsConfigDescription(data),
       labels: ["crisp", companyLabel(company)].filter(Boolean),
       duedate: dueDate,
