@@ -128,6 +128,55 @@ function buildImprovementDescription(
   return adf.doc(...nodes);
 }
 
+/** Build ADF description for a CS Config ticket */
+function buildCsConfigDescription(data: EnrichedData): unknown {
+  const nodes: ReturnType<typeof adf.heading>[] = [
+    adf.heading(2, "CS Config / Doc Change Request (via Crisp)"),
+    adf.labelValue("Requested by", `${data.customerName} (${data.customerEmail})`),
+    adf.labelValue("Company", data.companyName || "Unknown"),
+    adf.labelLink("Crisp Conversation", "View in Crisp", data.conversationUrl),
+    adf.labelValue("Date Requested", new Date().toISOString().slice(0, 10)),
+    adf.rule(),
+    adf.heading(3, "Request Summary"),
+    adf.paragraph(
+      adf.text(data.conversation.subject || "CS config/doc change request from customer")
+    ),
+    adf.heading(3, "Customer Context"),
+    adf.codeBlock(data.transcript || "(no messages)"),
+  ];
+
+  if (data.jamLinks.length > 0) {
+    nodes.push(adf.heading(3, "Attachments / Session Recordings"));
+    for (let i = 0; i < data.jamLinks.length; i++) {
+      const label = data.jamLinks.length === 1
+        ? "Jam Recording"
+        : `Jam Recording #${i + 1}`;
+      nodes.push(
+        adf.paragraph(
+          adf.text(`\uD83C\uDF53 ${label}: `, [adf.bold()]),
+          adf.text("View full session replay", [adf.link(data.jamLinks[i])])
+        )
+      );
+    }
+  }
+
+  nodes.push(adf.rule());
+  nodes.push(
+    adf.paragraph(
+      adf.text(`Auto-created from Crisp conversation. Segments: ${data.segments.join(", ")}`, [
+        { type: "em" } as ReturnType<typeof adf.bold>,
+      ])
+    ),
+    adf.paragraph(
+      adf.text("To be groomed — add details, scope, and acceptance criteria.", [
+        { type: "em" } as ReturnType<typeof adf.bold>,
+      ])
+    )
+  );
+
+  return adf.doc(...nodes);
+}
+
 /** Map enriched data → Jira issue fields */
 export function buildJiraFields(
   data: EnrichedData,
@@ -135,6 +184,31 @@ export function buildJiraFields(
 ): JiraIssueFields {
   const modules = resolveModules(data.segments);
   const isBug = trigger.config.jiraIssueType === "Bug";
+  const isCsConfig = trigger.segment === "cs-config";
+
+  // CS Config ticket (JTCS)
+  if (isCsConfig) {
+    const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const company = data.companyName || "Unknown";
+    const contextSnippet = data.conversation.subject
+      || (data.transcript ? data.transcript.slice(0, 300) : "See Crisp conversation");
+
+    return {
+      project: { key: trigger.config.jiraProject },
+      issuetype: { id: trigger.config.jiraIssueTypeId },
+      summary: `[Crisp] CS Config: ${data.summary}`,
+      description: buildCsConfigDescription(data),
+      labels: ["crisp", companyLabel(company)].filter(Boolean),
+      duedate: dueDate,
+      // Required custom fields — to be refined during grooming
+      customfield_11972: { id: "12082" }, // Module = "Config"
+      customfield_12155: { id: "12201" }, // Ticket type = "Others"
+      customfield_12157: `Customer request via Crisp. Company: ${company}.\n\nContext: ${contextSnippet}\n\n⚠️ To be detailed during grooming.`,
+      customfield_12357: "To be defined during grooming.",
+    };
+  }
 
   const prefix = isBug ? "[Crisp] Bug" : "[Crisp] Request";
   const summary = `${prefix}: ${data.summary}`;

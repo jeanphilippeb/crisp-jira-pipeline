@@ -14,10 +14,16 @@ export interface JiraIssueFields {
   labels?: string[];
   priority?: { id: string };
   // Custom fields
-  customfield_10072?: string[]; // Company name (labels)
-  customfield_11521?: { id: string }[]; // Module (multicheckboxes)
-  customfield_11901?: { id: string }[]; // Tech category (multicheckboxes)
-  customfield_11404?: { accountId: string }[]; // Product design owner (user picker, array format)
+  customfield_10072?: string[]; // Company name (labels) — JUR
+  customfield_11521?: { id: string }[]; // Module (multicheckboxes) — JUR/JENG
+  customfield_11901?: { id: string }[]; // Tech category (multicheckboxes) — JUR
+  customfield_11404?: { accountId: string }[]; // Product design owner — JUR
+  // JTCS required fields
+  customfield_11972?: { id: string }; // Module (select) — JTCS
+  customfield_12155?: { id: string }; // Ticket type (select) — JTCS
+  customfield_12157?: string;         // Which existing config — JTCS
+  customfield_12357?: string;         // Acceptance Criteria — JTCS
+  duedate?: string;                   // Due date (YYYY-MM-DD) — JTCS
   [key: string]: unknown; // Allow additional custom fields
 }
 

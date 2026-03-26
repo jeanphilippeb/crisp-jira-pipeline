@@ -1,9 +1,9 @@
 export interface TriggerSegment {
   jiraProject: string;
-  jiraIssueType: "Bug" | "Improvement";
+  jiraIssueType: "Bug" | "Improvement" | "Task";
   jiraIssueTypeId: string;
   jiraPriority: string;
-  jiraPriorityId?: string; // Optional — some projects (JB) don't support priority field
+  jiraPriorityId?: string; // Optional — some projects (JB, JTCS) don't support priority field
 }
 
 export interface ModuleSegment {
@@ -32,6 +32,13 @@ export const TRIGGER_SEGMENTS: Record<string, TriggerSegment> = {
     jiraIssueTypeId: "10867",
     jiraPriority: "Medium",
     jiraPriorityId: "3",
+  },
+  "cs-config": {
+    jiraProject: "JTCS",
+    jiraIssueType: "Task",
+    jiraIssueTypeId: "10569", // "Configuration tasks" in JTCS
+    jiraPriority: "Medium",
+    // JTCS does not support priority field — omit jiraPriorityId
   },
 };
 
@@ -65,8 +72,8 @@ export function resolveTrigger(
   segments: string[]
 ): { segment: string; config: TriggerSegment } | null {
   const normalized = segments.map(normalizeSegment);
-  // Priority: urgent-bug > bug > feature-request
-  for (const key of ["urgent-bug", "bug", "feature-request"]) {
+  // Priority: urgent-bug > bug > feature-request > cs-config
+  for (const key of ["urgent-bug", "bug", "feature-request", "cs-config"]) {
     if (normalized.includes(key)) {
       return { segment: key, config: TRIGGER_SEGMENTS[key] };
     }
