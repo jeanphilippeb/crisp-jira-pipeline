@@ -203,30 +203,33 @@ export function buildJiraFields(
       ? `\nRecordings:\n${data.jamLinks.join("\n")}`
       : "";
 
-    // JTCS is team-managed (simplified): description must be plain text, not ADF
-    const plainDescription = [
-      `CS Config / Doc Change Request — via Crisp`,
-      ``,
-      `Reporter: ${data.customerName} (${data.customerEmail})`,
-      `Company: ${company}`,
-      `Crisp conversation: ${data.conversationUrl}`,
-      `Date: ${new Date().toISOString().slice(0, 10)}`,
-      ``,
-      `Subject: ${subject}`,
-      ``,
-      `Conversation:`,
-      transcript,
-      jamSection,
-      ``,
-      `Segments: ${data.segments.join(", ")}`,
-      `⚠️ To be detailed during grooming.`,
-    ].join("\n");
+    // JTCS is team-managed: use only paragraph+text ADF nodes (no codeBlock/rule/heading)
+    const descNodes = [
+      adf.paragraph(adf.text("CS Config / Doc Change Request — via Crisp", [adf.bold()])),
+      adf.paragraph(adf.text(`Reporter: ${data.customerName} (${data.customerEmail})`)),
+      adf.paragraph(adf.text(`Company: ${company}`)),
+      adf.labelLink("Crisp conversation", "View in Crisp", data.conversationUrl),
+      adf.paragraph(adf.text(`Date: ${new Date().toISOString().slice(0, 10)}`)),
+      adf.paragraph(adf.text(`Subject: ${subject}`)),
+      adf.paragraph(adf.text("Conversation:", [adf.bold()])),
+      adf.paragraph(adf.text(transcript)),
+    ];
+    if (data.jamLinks.length > 0) {
+      descNodes.push(adf.paragraph(adf.text("Recordings:", [adf.bold()])));
+      for (const link of data.jamLinks) {
+        descNodes.push(adf.paragraph(adf.text(link, [adf.link(link)])));
+      }
+    }
+    descNodes.push(
+      adf.paragraph(adf.text(`Segments: ${data.segments.join(", ")}`)),
+      adf.paragraph(adf.text("⚠️ To be detailed during grooming.", [{ type: "em" } as ReturnType<typeof adf.bold>]))
+    );
 
     return {
       project: { key: trigger.config.jiraProject },
       issuetype: { id: trigger.config.jiraIssueTypeId },
       summary: `[Crisp] CS Config — ${company}`,
-      description: plainDescription,
+      description: adf.doc(...descNodes),
       labels: ["crisp", companyLabel(company)].filter(Boolean),
       duedate: dueDate,
       // Required custom fields — to be refined during grooming
