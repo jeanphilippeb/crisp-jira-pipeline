@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import { resolveTrigger } from "../config/segment-mapping.js";
 import { enrichConversation } from "../services/enrichment.js";
-import { hasExistingTicket, storeTicketLink } from "../services/duplicate-guard.js";
+import { storeTicketLink } from "../services/duplicate-guard.js";
 import { buildJiraFields } from "../services/mapper.js";
 import { createIssue } from "../clients/jira.js";
 import { postNote } from "../clients/crisp.js";
@@ -108,17 +108,6 @@ export async function handleCrispWebhook(c: Context): Promise<Response> {
   }
 
   console.log(`[webhook] Trigger: ${trigger.segment} for session ${sessionId}`);
-
-  // Duplicate check (BR-001) — non-fatal if Crisp API fails
-  try {
-    const existingKey = await hasExistingTicket(sessionId);
-    if (existingKey) {
-      console.log(`[webhook] Duplicate — ticket ${existingKey} already exists`);
-      return c.json({ skipped: true, reason: "duplicate", existingTicket: existingKey }, 200);
-    }
-  } catch (err) {
-    console.warn("[webhook] Could not check for duplicate (Crisp API error), proceeding:", err);
-  }
 
   // Enrich conversation data
   const enriched = await enrichConversation(sessionId, websiteId);
